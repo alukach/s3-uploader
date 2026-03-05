@@ -28,9 +28,24 @@ init();
 
 function init() {
   loadConfig();
+  applyQueryParams();
   bindEvents();
   renderFileList();
   updateButtons();
+}
+
+function applyQueryParams() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("bucket")) {
+    els.bucket.value = params.get("bucket");
+  }
+  if (params.has("prefix")) {
+    els.prefix.value = params.get("prefix");
+  }
+  if (params.has("region")) {
+    els.region.value = params.get("region");
+  }
+  saveConfig();
 }
 
 function bindEvents() {
