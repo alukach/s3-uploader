@@ -78,6 +78,53 @@
         <h2>Activity</h2>
         <pre id="log" class="log" aria-live="polite"></pre>
       </section>
+
+      <details class="card">
+        <summary><h2 style="display:inline">S3 Bucket Setup (for admins)</h2></summary>
+
+        <p>To allow public uploads, the target S3 bucket needs three things configured:</p>
+
+        <h3>1. Disable Block Public Access</h3>
+        <p>
+          In your bucket's <strong>Permissions</strong> tab, under
+          <strong>Block public access (bucket settings)</strong>, uncheck all
+          options (or at minimum uncheck "Block public and cross-account access
+          to buckets and objects through any public bucket or access point policy").
+        </p>
+
+        <h3>2. Bucket Policy</h3>
+        <p>Add a bucket policy that grants public <code>s3:PutObject</code> access:</p>
+        <pre class="log"><code>{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "PublicWrite",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": [
+                "s3:PutObject"
+            ],
+            "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/*"
+        }
+    ]
+}</code></pre>
+
+        <h3>3. CORS Configuration</h3>
+        <p>
+          Under the bucket's <strong>Permissions &rarr; Cross-origin resource
+          sharing (CORS)</strong>, add a configuration that allows uploads from
+          your origin:
+        </p>
+        <pre class="log"><code>[
+    {
+        "AllowedHeaders": ["*"],
+        "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+        "AllowedOrigins": ["https://your-origin.example.com"],
+        "ExposeHeaders": ["ETag"],
+        "MaxAgeSeconds": 3600
+    }
+]</code></pre>
+      </details>
     </main>
 
     <script src="app.js" defer></script>
