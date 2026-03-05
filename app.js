@@ -272,26 +272,24 @@ async function uploadSingleFile(entry, config) {
   updateEntryUI(entry);
   updateOverallProgress();
 
-  log(`Initiating multipart upload for ${file.name} -> ${entry.key}`);
+  log(`Uploading ${file.name} -> ${entry.key}`);
 
-  let uploadId = "";
   try {
-    uploadId = await createMultipartUpload(objectUrl);
-    const parts = await uploadAllParts({
-      file,
-      objectUrl,
-      uploadId,
-      partSizeBytes: config.partSizeMb * MB,
-      concurrency: config.partConcurrency,
-      onProgress: (uploaded) => {
-        entry.uploadedBytes = uploaded;
-        entry.progress = (uploaded / file.size) * 100;
+    await xhrRequest("PUT", objectUrl, {
+      body: file,
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+      },
+      onUploadProgress: (event) => {
+        if (!event.lengthComputable) {
+          return;
+        }
+        entry.uploadedBytes = event.loaded;
+        entry.progress = (event.loaded / file.size) * 100;
         updateEntryUI(entry);
         updateOverallProgress();
       },
     });
-
-    await completeMultipartUpload(objectUrl, uploadId, parts);
 
     entry.uploadedBytes = file.size;
     entry.progress = 100;
@@ -301,14 +299,6 @@ async function uploadSingleFile(entry, config) {
 
     log(`Uploaded ${file.name} successfully.`);
   } catch (error) {
-    if (uploadId) {
-      try {
-        await abortMultipartUpload(objectUrl, uploadId);
-      } catch (abortError) {
-        log(`Abort failed for ${file.name}: ${stringifyError(abortError)}`);
-      }
-    }
-
     entry.status = "error";
     entry.error = stringifyError(error);
     updateEntryUI(entry);
