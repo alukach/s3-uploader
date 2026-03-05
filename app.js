@@ -100,7 +100,9 @@ function addFiles(fileList) {
     return;
   }
 
-  const existing = new Set(state.files.map((entry) => fileFingerprint(entry.file)));
+  const existing = new Set(
+    state.files.map((entry) => fileFingerprint(entry.file)),
+  );
   let added = 0;
 
   for (const file of fileList) {
@@ -192,8 +194,14 @@ function updateOverallProgress() {
     return;
   }
 
-  const totalBytes = state.files.reduce((sum, entry) => sum + entry.file.size, 0);
-  const uploadedBytes = state.files.reduce((sum, entry) => sum + entry.uploadedBytes, 0);
+  const totalBytes = state.files.reduce(
+    (sum, entry) => sum + entry.file.size,
+    0,
+  );
+  const uploadedBytes = state.files.reduce(
+    (sum, entry) => sum + entry.uploadedBytes,
+    0,
+  );
   const percent = totalBytes === 0 ? 0 : (uploadedBytes / totalBytes) * 100;
 
   els.overallBar.style.width = `${percent}%`;
@@ -227,26 +235,35 @@ async function startUploads() {
   log(
     `Starting upload of ${pendingFiles.length} file${
       pendingFiles.length === 1 ? "" : "s"
-    } to bucket ${config.bucket}.`
+    } to bucket ${config.bucket}.`,
   );
 
   await runWithConcurrency(config.fileConcurrency, pendingFiles, (entry) =>
-    uploadSingleFile(entry, config)
+    uploadSingleFile(entry, config),
   );
 
   state.uploadsInProgress = false;
   updateButtons();
 
-  const failures = state.files.filter((entry) => entry.status === "error").length;
+  const failures = state.files.filter(
+    (entry) => entry.status === "error",
+  ).length;
   if (failures === 0) {
     log("All uploads completed.");
   } else {
-    log(`Uploads completed with ${failures} failure${failures === 1 ? "" : "s"}.`);
+    log(
+      `Uploads completed with ${failures} failure${failures === 1 ? "" : "s"}.`,
+    );
   }
 }
 
 async function uploadSingleFile(entry, config) {
-  const objectUrl = buildObjectUrl(config.bucket, config.region, entry.key, config.pathStyle);
+  const objectUrl = buildObjectUrl(
+    config.bucket,
+    config.region,
+    entry.key,
+    config.pathStyle,
+  );
   const file = entry.file;
 
   entry.status = "uploading";
@@ -327,7 +344,10 @@ function makeUniqueKey(prefix, fileName, seenKeys) {
 function buildObjectUrl(bucket, region, key, pathStyle) {
   const bucketName = bucket.trim();
   const regionName = region.trim() || "us-east-1";
-  const host = regionName === "us-east-1" ? "s3.amazonaws.com" : `s3.${regionName}.amazonaws.com`;
+  const host =
+    regionName === "us-east-1"
+      ? "s3.amazonaws.com"
+      : `s3.${regionName}.amazonaws.com`;
   const encodedKey = encodeS3Key(key);
 
   if (pathStyle) {
@@ -431,7 +451,13 @@ async function uploadAllParts({
   });
 }
 
-async function uploadPart({ objectUrl, uploadId, partNumber, blob, onProgress }) {
+async function uploadPart({
+  objectUrl,
+  uploadId,
+  partNumber,
+  blob,
+  onProgress,
+}) {
   const query = `partNumber=${partNumber}&uploadId=${encodeURIComponent(uploadId)}`;
   const result = await xhrRequest("PUT", `${objectUrl}?${query}`, {
     body: blob,
@@ -451,7 +477,7 @@ async function uploadPart({ objectUrl, uploadId, partNumber, blob, onProgress })
   const etag = result.headers.get("ETag");
   if (!etag) {
     throw new Error(
-      "Missing ETag response header for part upload. Add ETag to CORS ExposeHeaders."
+      "Missing ETag response header for part upload. Add ETag to CORS ExposeHeaders.",
     );
   }
 
@@ -461,9 +487,11 @@ async function uploadPart({ objectUrl, uploadId, partNumber, blob, onProgress })
 async function completeMultipartUpload(objectUrl, uploadId, parts) {
   const xmlParts = parts
     .map((part) => {
-      const normalizedEtag = /^".*"$/.test(part.etag) ? part.etag : `"${part.etag}"`;
+      const normalizedEtag = /^".*"$/.test(part.etag)
+        ? part.etag
+        : `"${part.etag}"`;
       return `<Part><PartNumber>${part.partNumber}</PartNumber><ETag>${escapeXml(
-        normalizedEtag
+        normalizedEtag,
       )}</ETag></Part>`;
     })
     .join("");
@@ -478,18 +506,23 @@ async function completeMultipartUpload(objectUrl, uploadId, parts) {
       headers: {
         "Content-Type": "application/xml",
       },
-    }
+    },
   );
 
   if (result.body.includes("<Error>")) {
     const code = getXmlTagValue(result.body, "Code");
     const message = getXmlTagValue(result.body, "Message");
-    throw new Error(`${code || "S3Error"}: ${message || "Complete multipart upload failed."}`);
+    throw new Error(
+      `${code || "S3Error"}: ${message || "Complete multipart upload failed."}`,
+    );
   }
 }
 
 async function abortMultipartUpload(objectUrl, uploadId) {
-  await xhrRequest("DELETE", `${objectUrl}?uploadId=${encodeURIComponent(uploadId)}`);
+  await xhrRequest(
+    "DELETE",
+    `${objectUrl}?uploadId=${encodeURIComponent(uploadId)}`,
+  );
 }
 
 function xhrRequest(method, url, options = {}) {
@@ -525,8 +558,13 @@ function xhrRequest(method, url, options = {}) {
 
       const code = getXmlTagValue(responseBody, "Code");
       const message = getXmlTagValue(responseBody, "Message");
-      const errorDetails = code || message ? `${code || "HTTPError"}: ${message || ""}` : responseBody;
-      reject(new Error(`HTTP ${status} ${method} ${url} - ${errorDetails}`.trim()));
+      const errorDetails =
+        code || message
+          ? `${code || "HTTPError"}: ${message || ""}`
+          : responseBody;
+      reject(
+        new Error(`HTTP ${status} ${method} ${url} - ${errorDetails}`.trim()),
+      );
     };
 
     xhr.onerror = () => {
